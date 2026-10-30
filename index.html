@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="在发布前检查实际 npm 安装包。比较文件、体积、入口和安装脚本，生成一张本地发布收据。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Pack Receipt · 软件包发布收据</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="enhancements.css">
+  <link rel="stylesheet" href="receipt-skin.css">
+  <link rel="stylesheet" href="printer.css">
+  <script defer src="archive.js"></script>
+  <script defer src="analyzer.js"></script>
+  <script defer src="demo.js"></script>
+  <script defer src="diff.js"></script>
+  <script defer src="file-tools.js"></script>
+  <script defer src="processor.js"></script>
+  <script defer src="receipt-ui.js"></script>
+  <script defer src="printer.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./index.html" aria-label="Pack Receipt 首页">
+      <span class="brand-badge"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m4 8 12-6 12 6v16l-12 6-12-6Z"/><path d="m4 8 12 6 12-6M16 14v16M10 5l12 6v7"/></svg></span>
+      <span>Pack Receipt<small>软件包发布收据</small></span>
+    </a>
+    <div class="header-right">
+      <label class="theme-control">主题 <select id="theme-select"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+      <span class="local-note"><span class="pulse-dot" aria-hidden="true"></span>文件只在此浏览器处理</span>
+      <button class="theme-toggle-btn" id="theme-toggle" type="button" aria-label="切换浅色或深色主题" title="切换浅色 / 深色主题">
+        <svg class="theme-icon sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="theme-icon moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">BEFORE YOU PUBLISH</p><h1>发出去的，<br class="mobile-break">正是你想发的吗？</h1><p>看看实际安装包里有什么，以及这一版究竟变了什么。</p></div>
+      <button class="button sample-button" id="load-demo" type="button"><span aria-hidden="true">↗</span> 载入问题样本</button>
+    </section>
+
+    <div class="workbench">
+      <aside class="input-panel" aria-label="选择软件包">
+        <div class="panel-heading"><h2>选择安装包</h2><button class="text-button" id="reset" type="button">清空</button></div>
+        <p class="input-help">将 <code>npm pack</code> 生成的文件拖到这里。支持 <code>.tgz</code> 和 <code>.tar</code>，每包最多 40 MiB。</p>
+        <label class="drop-zone" id="current-drop" for="current-file">
+          <span class="slot-label">本次发布 <span>必选</span></span>
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 11V5h16v6M5 11h22v16H5zM11 17h10M16 14v6"/></svg>
+          <strong id="current-name">拖入本次安装包</strong><span class="drop-detail" id="current-detail">或点击选择文件</span>
+          <input id="current-file" type="file" accept=".tgz,.tar,.gz,application/gzip,application/x-tar">
+        </label>
+        <div class="comparison-connector" aria-hidden="true"><span></span> 对比 <span></span></div>
+        <label class="drop-zone secondary" id="previous-drop" for="previous-file">
+          <span class="slot-label">上一版 <span>可选</span></span>
+          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 11V5h16v6M5 11h22v16H5zM11 18h10"/></svg>
+          <strong id="previous-name">拖入上一版安装包</strong><span class="drop-detail" id="previous-detail">用于比较文件和脚本的变化</span>
+          <input id="previous-file" type="file" accept=".tgz,.tar,.gz,application/gzip,application/x-tar">
+        </label>
+        <p class="status-message" id="status" role="status" aria-live="polite">正在准备内置样本…</p>
+        <div class="scope-note"><h3>检查实际产物</h3><p>不安装依赖，不运行包内脚本。文件不会上传，也不会自动保存。</p><p>只检查包内文件与声明；不代替真实安装测试或完整安全审计。</p></div>
+      </aside>
+
+      <div class="receipt-printer" id="receipt-printer" data-state="idle">
+        <div class="printer-head" aria-label="热敏收据打印机">
+          <div class="printer-head-top"><span class="printer-model">PACK RECEIPT <small>THERMAL / 01</small></span><span class="printer-indicator"><span class="printer-led" aria-hidden="true"></span><span class="printer-state-label">等待安装包</span></span></div>
+          <div class="printer-mouth" aria-hidden="true"></div>
+        </div>
+        <button class="tear-control" id="tear-receipt" type="button" disabled aria-describedby="printer-message" title="撕下后保留检查结果，可继续复制和下载"><span class="tear-line" aria-hidden="true"></span><span class="tear-icon" aria-hidden="true">✂</span><span class="tear-label">点击撕下小票</span><span class="tear-line" aria-hidden="true"></span></button>
+        <section class="receipt" aria-label="发布检查报告" aria-busy="false" id="receipt">
+        <div id="empty-state" class="empty-state" hidden><svg viewBox="0 0 80 96" aria-hidden="true"><path d="M15 4h50v86l-8-4-8 4-9-4-9 4-8-4-8 4Z"/><path d="M27 26h26M27 40h26M27 54h15M27 69h26"/></svg><h2>一张收据，看清发布内容。</h2><p>选择本次安装包开始检查。<br>也可以载入样本，先看看漏发入口和误打包文件是什么样。</p></div>
+        <div id="report-content" hidden>
+          <header class="receipt-header"><div><div class="receipt-kicker"><span>RELEASE RECEIPT</span><span class="demo-tag" id="demo-tag" hidden>内置演示数据</span></div><h2 id="package-name"></h2><p id="package-version"></p></div><div class="export-actions"><button id="copy-markdown" class="button small copy-button" type="button"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span>复制 Markdown</span></button><button id="export-markdown" class="button small" type="button">导出 Markdown</button><button id="export-json" class="text-button" type="button">JSON</button></div></header>
+          <div class="receipt-summary" id="summary"></div>
+          <dl class="stats-strip" id="stats"></dl>
+          <nav class="report-tabs" role="tablist" aria-label="报告内容">
+            <button type="button" id="findings-tab" role="tab" class="report-tab active" data-tab="findings" aria-selected="true" aria-controls="findings-panel" tabindex="0" aria-keyshortcuts="1">检查结果 <span id="findings-count"></span></button>
+            <button type="button" id="files-tab" role="tab" class="report-tab" data-tab="files" aria-selected="false" aria-controls="files-panel" tabindex="-1" aria-keyshortcuts="2">文件清单 <span id="files-count"></span></button>
+            <button type="button" id="scripts-tab" role="tab" class="report-tab" data-tab="scripts" aria-selected="false" aria-controls="scripts-panel" tabindex="-1" aria-keyshortcuts="3">发布脚本 <span id="scripts-count"></span></button>
+          </nav>
+          <section id="findings-panel" class="tab-panel" role="tabpanel" aria-labelledby="findings-tab" tabindex="0">
+            <div class="section-label"><h3>逐项检查</h3><label class="filter-label">显示 <select id="severity-filter"><option value="all">全部结果</option><option value="error">需要修复</option><option value="warning">需要复核</option><option value="info">信息提示</option></select></label></div>
+            <div id="findings"></div>
+            <section class="size-section">
+              <div class="section-label"><h3>体积花在哪里</h3><span id="size-caption"></span></div>
+              <div class="treemap-toolbar"><nav id="treemap-breadcrumb" class="treemap-breadcrumb" aria-label="体积图目录"></nav><label class="filter-label">视图 <select id="treemap-mode"><option value="folders">按目录</option><option value="files">全部文件</option></select></label></div>
+              <div class="treemap-container" id="treemap"></div><div id="treemap-legend" class="treemap-legend"></div><div class="growth-list" id="growth"></div>
+            </section>
+          </section>
+          <section id="files-panel" class="tab-panel" aria-label="文件清单" hidden><div class="file-controls"><label class="search-label"><div class="search-title-row"><span>查找文件</span><kbd class="kbd-hint">/</kbd></div><div class="search-input-wrap"><svg class="search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="file-search" type="search" placeholder="输入路径或文件名..." autocomplete="off"></div></label><label class="filter-label">变化 <select id="file-filter"><option value="all">全部文件</option><option value="added">新增</option><option value="changed">修改</option><option value="removed">删除</option><option value="unchanged">未变</option></select></label></div><p class="muted small-text" id="file-result-count"></p><div class="table-scroll"><table class="file-table"><thead><tr><th scope="col" class="sortable" data-sort="path">文件路径 <span class="sort-badge" aria-hidden="true"></span></th><th scope="col" class="sortable" data-sort="kind">变化 <span class="sort-badge" aria-hidden="true"></span></th><th scope="col" class="sortable" data-sort="size">本次 <span class="sort-badge" aria-hidden="true"></span></th><th scope="col" class="sortable" data-sort="delta">差值 <span class="sort-badge" aria-hidden="true"></span></th></tr></thead><tbody id="file-rows"></tbody></table></div><button id="more-files" type="button" class="button load-more" hidden>显示更多文件</button></section>
+          <section id="scripts-panel" class="tab-panel" role="tabpanel" aria-labelledby="scripts-tab" tabindex="0" hidden><p class="section-intro">脚本只作展示。新增或修改的安装生命周期脚本值得复核，存在脚本本身不代表恶意。</p><div id="scripts"></div></section>
+          <footer class="receipt-footer"><span>PACK RECEIPT</span><p>这是规则检查的结果，不是安全证明。包的运行行为与外部依赖未被执行或验证。</p></footer>
+        </div>
+        </section>
+        <div class="printer-actions"><p id="printer-message" role="status" aria-live="polite">选择安装包，生成本地发布收据。</p><button id="print-again" class="button small" type="button" hidden>重新打印</button></div>
+      </div>
+    </div>
+    <footer class="page-footer"><span>先检查，再发布。</span><span>快捷键：<kbd>/</kbd> 搜索 · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 切换 · <kbd>Esc</kbd> 关闭预览</span></footer>
+  </main>
+  <dialog id="file-dialog" aria-labelledby="file-dialog-title">
+    <div class="dialog-heading"><div><p class="eyebrow">FILE INSPECTOR</p><h2 id="file-dialog-title"></h2></div><button class="button small" id="close-dialog" type="button" autofocus>关闭</button></div>
+    <p class="muted small-text">每版最多预览 64 KiB 文本；超长对比有计算与显示上限。文件内容不会执行。</p>
+    <div class="diff-toolbar" id="diff-toolbar"><div class="diff-view-buttons" role="group" aria-label="文本对比视图"><button class="button small" id="diff-split" type="button" data-diff-view="split" aria-pressed="true">并排</button><button class="button small" id="diff-unified" type="button" data-diff-view="unified" aria-pressed="false">统一</button></div><label><input id="diff-changes-only" type="checkbox" checked> 仅看改动</label><span id="diff-summary" class="diff-meta"></span></div>
+    <p id="diff-notice" class="diff-notice" role="status"></p>
+    <div id="diff-output" class="diff-scroll" tabindex="0" aria-label="文件文本对比"></div>
+    <div id="metadata-preview" class="file-preview-columns" hidden><section><h3>上一版</h3><pre id="previous-preview"></pre></section><section><h3>本次发布</h3><pre id="current-preview"></pre></section></div>
+  </dialog>
+  <dialog id="copy-dialog" aria-labelledby="copy-dialog-title"><div class="dialog-heading"><h2 id="copy-dialog-title">手动复制内容</h2><button id="close-copy-dialog" class="button small" type="button">关闭</button></div><p class="muted small-text">浏览器未允许直接写入剪贴板。内容已选中，按 Ctrl+C 或 ⌘C 复制。</p><textarea id="copy-content" class="manual-copy-content" aria-label="待复制内容" readonly></textarea></dialog>
+  <div id="drop-overlay" class="drop-overlay" role="region" aria-label="选择安装包放置位置" hidden><div class="drop-overlay-grid"><button type="button" class="overlay-drop-target" data-slot="current"><strong>本次发布包</strong><span>放到这里，检查本次要发布的内容</span></button><button type="button" class="overlay-drop-target" data-slot="previous"><strong>上一版对照包</strong><span>放到这里，与本次发布比较</span></button></div><p>每个位置一次放入一个 .tgz 或 .tar 文件 · Esc 取消</p></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

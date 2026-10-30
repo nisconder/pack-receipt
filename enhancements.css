@@ -1,0 +1,605 @@
+/* ==========================================================================
+   Chart Tokens & Theme Controls
+   Keep package data out of theme storage; theme.js stores one preference only.
+   ========================================================================== */
+:root {
+  --map-1: #d7ddfb;
+  --map-2: #cce5e3;
+  --map-3: #d5dff1;
+  --map-4: #e7dded;
+  --map-5: #d5e2d9;
+  --map-6: #e4e7f0;
+  --map-7: #d4e6ed;
+  --map-8: #e9e1d3;
+  --map-9: #dcdcf0;
+  --map-10: #dfe9e4;
+  --map-ink: #27344a;
+  --map-muted: #4f5d74;
+  --map-stroke: var(--paper);
+}
+
+:root[data-theme="dark"] {
+  --map-1: #414c75;
+  --map-2: #31534f;
+  --map-3: #3b4c67;
+  --map-4: #59465d;
+  --map-5: #3b5143;
+  --map-6: #464d62;
+  --map-7: #345561;
+  --map-8: #5b5040;
+  --map-9: #49476b;
+  --map-10: #3c554b;
+  --map-ink: #edf2fb;
+  --map-muted: #c4d0e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --map-1: #414c75;
+    --map-2: #31534f;
+    --map-3: #3b4c67;
+    --map-4: #59465d;
+    --map-5: #3b5143;
+    --map-6: #464d62;
+    --map-7: #345561;
+    --map-8: #5b5040;
+    --map-9: #49476b;
+    --map-10: #3c554b;
+    --map-ink: #edf2fb;
+    --map-muted: #c4d0e2;
+  }
+}
+
+.header-tools,
+.header-right {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.theme-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.theme-control select {
+  min-height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 7px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.treemap-container text {
+  fill: var(--map-ink);
+}
+
+.treemap-container .map-size {
+  fill: var(--map-muted);
+}
+
+.treemap-container rect {
+  stroke: var(--map-stroke);
+}
+
+/* ==========================================================================
+   Sortable Inventory & Visible Path Copy Actions
+   ========================================================================== */
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+th[aria-sort="ascending"] .sort-button,
+th[aria-sort="descending"] .sort-button,
+.sort-button:hover {
+  color: var(--accent);
+}
+
+.path-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.path-cell .file-link {
+  flex: 1;
+}
+
+.copy-path {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px 7px;
+  background: var(--paper);
+  color: var(--muted);
+  font: 11px/1.4 var(--body);
+  white-space: nowrap;
+}
+
+.copy-path:hover,
+.copy-path[data-copied="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ==========================================================================
+   Directory Treemap Controls
+   ========================================================================== */
+.treemap-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.treemap-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 7px;
+  min-width: 0;
+  color: var(--muted);
+  font: 11px/1.6 var(--mono);
+}
+
+.treemap-breadcrumb button {
+  max-width: 100%;
+  min-height: 28px;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 5px;
+  overflow-wrap: anywhere;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+}
+
+.treemap-breadcrumb button:hover {
+  background: var(--accent-soft);
+}
+
+.treemap-breadcrumb [aria-current] {
+  color: var(--ink);
+}
+
+.treemap-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.treemap-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treemap-legend i,
+.treemap-legend .legend-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   Bounded Unified / Split Diff Inspector
+   ========================================================================== */
+.receipt,
+.receipt-header > div:first-child,
+.dialog-heading > div {
+  min-width: 0;
+}
+
+.stats-strip dd small {
+  white-space: normal;
+}
+
+.file-controls,
+.script-heading,
+.section-label {
+  flex-wrap: wrap;
+}
+
+.search-label {
+  min-width: 140px;
+}
+
+dialog {
+  width: min(1240px, calc(100% - 36px));
+  max-width: calc(100% - 36px);
+  overflow: auto;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+dialog::backdrop {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+dialog[open]::backdrop {
+  opacity: 1;
+}
+
+.file-preview-columns pre {
+  overflow-wrap: normal;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 17px 0 12px;
+}
+
+.diff-view-buttons {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  background: var(--paper-subtle);
+}
+
+.diff-view-buttons button {
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 11px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.diff-view-buttons button[aria-pressed="true"] {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.diff-meta,
+.diff-notice {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.diff-notice {
+  margin: 9px 0;
+}
+
+#diff-changes-only {
+  accent-color: var(--accent);
+  vertical-align: -2px;
+}
+
+.diff-scroll,
+.diff-table-wrap {
+  max-width: 100%;
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-subtle);
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 11.5px/1.8 var(--mono);
+  tab-size: 4;
+}
+
+.diff-table th {
+  border-bottom: 1px solid var(--line);
+  padding: 7px 10px;
+  background: var(--paper-elevated);
+  color: var(--muted);
+  text-align: left;
+  font: 12px var(--body);
+}
+
+.diff-table td {
+  height: 23px;
+  padding: 0 8px;
+  vertical-align: top;
+}
+
+.diff-number {
+  width: 1%;
+  min-width: 40px;
+  border-right: 1px solid var(--line);
+  background: var(--paper-elevated);
+  color: var(--subtle);
+  text-align: right;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.diff-sign {
+  width: 1%;
+  min-width: 23px;
+  color: var(--muted);
+  text-align: center;
+  user-select: none;
+}
+
+.diff-text {
+  min-width: 120px;
+  white-space: pre;
+}
+
+.diff-table.split .diff-text {
+  width: 50%;
+}
+
+.diff-line.add,
+.diff-line[data-kind="add"],
+.diff-cell.add {
+  background: var(--teal-soft);
+}
+
+.diff-line.remove,
+.diff-line[data-kind="remove"],
+.diff-cell.remove {
+  background: var(--error-soft);
+}
+
+.diff-line.changed,
+.diff-line[data-kind="changed"],
+.diff-cell.changed {
+  background: var(--accent-soft);
+}
+
+.diff-cell.empty {
+  background: var(--paper-subtle);
+}
+
+.diff-line.add .diff-sign,
+.diff-cell.add.diff-sign {
+  color: var(--teal);
+}
+
+.diff-line.remove .diff-sign,
+.diff-cell.remove.diff-sign {
+  color: var(--error);
+}
+
+.diff-gap td {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 5px 10px;
+  background: var(--paper-elevated);
+  color: var(--muted);
+  font: 11px/1.8 var(--body);
+}
+
+.eol-marker {
+  margin-left: 8px;
+  color: var(--subtle);
+  font: 9px var(--mono);
+  user-select: none;
+}
+
+/* ==========================================================================
+   Window-wide File Drop Targets
+   ========================================================================== */
+#drop-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  gap: 20px;
+  padding: clamp(20px, 6vw, 80px);
+  background: var(--bg-page);
+  backdrop-filter: blur(5px);
+}
+
+#drop-overlay > p {
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.drop-overlay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: min(960px, 100%);
+  margin: 0 auto;
+}
+
+.overlay-drop-target {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 260px;
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-xl);
+  padding: 30px 24px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  transition: background 120ms, border-color 120ms, transform 120ms;
+}
+
+.overlay-drop-target strong {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.overlay-drop-target span,
+.overlay-drop-target p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overlay-drop-target.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-3px);
+}
+
+/* ==========================================================================
+   Native CSS Enhancements (fallbacks remain usable above)
+   ========================================================================== */
+@supports (background: color-mix(in srgb, white, black)) {
+  .copy-path:hover {
+    background: color-mix(in srgb, var(--accent) 6%, var(--paper));
+  }
+
+  .overlay-drop-target.is-over {
+    background: color-mix(in srgb, var(--accent) 12%, var(--paper));
+  }
+
+  .diff-line.add,
+  .diff-line[data-kind="add"],
+  .diff-cell.add {
+    background: color-mix(in srgb, var(--teal) 12%, var(--paper));
+  }
+
+  .diff-line.remove,
+  .diff-line[data-kind="remove"],
+  .diff-cell.remove {
+    background: color-mix(in srgb, var(--error) 12%, var(--paper));
+  }
+}
+
+@supports (transition-behavior: allow-discrete) {
+  dialog {
+    transition: opacity 160ms ease, transform 160ms ease,
+      display 160ms allow-discrete, overlay 160ms allow-discrete;
+  }
+
+  dialog::backdrop {
+    transition: opacity 160ms ease, display 160ms allow-discrete,
+      overlay 160ms allow-discrete;
+  }
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Toolbars wrap; code and diff scroll within the dialog rather than the page. */
+@media (max-width: 760px) {
+  .header-tools,
+  .header-right {
+    max-width: 180px;
+    gap: 9px;
+  }
+
+  .theme-control {
+    font-size: 10px;
+  }
+
+  .theme-control select {
+    padding: 3px 5px;
+  }
+
+  .treemap-toolbar,
+  .diff-toolbar {
+    align-items: flex-start;
+  }
+
+  .copy-path {
+    min-height: 30px;
+  }
+
+  dialog {
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    max-height: 88vh;
+    padding: 22px 15px;
+  }
+
+  .dialog-heading {
+    gap: 12px;
+  }
+
+  .diff-table td {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .diff-number {
+    min-width: 32px;
+  }
+
+  #drop-overlay {
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .drop-overlay-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .overlay-drop-target {
+    min-height: 180px;
+    padding: 18px;
+  }
+
+  .overlay-drop-target strong {
+    font-size: 19px;
+  }
+}
+
+/* The dialog backdrop and its discrete display transition also respect this. */
+@media (prefers-reduced-motion: reduce) {
+  dialog::backdrop {
+    transition: none !important;
+    animation: none !important;
+  }
+}

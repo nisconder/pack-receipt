@@ -1,0 +1,11 @@
+{
+  "name": "pack-receipt",
+  "version": "0.3.0",
+  "private": true,
+  "description": "A browser-local receipt for the npm package you are about to publish.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/nisconder/pack-receipt.git" },
+  "bugs": { "url": "https://github.com/nisconder/pack-receipt/issues" },
+  "scripts": { "test": "node tests/run.cjs", "start": "node serve.cjs" },
+  "engines": { "node": ">=20" }
+}

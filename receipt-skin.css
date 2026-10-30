@@ -1,0 +1,690 @@
+/* ==========================================================================
+   Digital Receipt — isolated visual study
+   Load after styles.css and enhancements.css. No application behavior lives here.
+   Signature: a perforated paper edge, one restrained status stamp, ledger rules.
+   ========================================================================== */
+
+/* 01 / Paper and elevation ------------------------------------------------- */
+:root {
+  --ticket-shadow: 0 2px 3px -2px rgba(15, 23, 42, 0.12),
+    0 20px 48px -26px rgba(15, 23, 42, 0.24);
+  --ticket-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ticket-backdrop: rgba(15, 23, 42, 0.44);
+}
+
+:root[data-theme="dark"] {
+  --ticket-shadow: 0 2px 3px -2px rgba(0, 0, 0, 0.8),
+    0 22px 48px -20px rgba(0, 0, 0, 0.6);
+  --ticket-inset: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --ticket-backdrop: rgba(2, 6, 15, 0.72);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ticket-shadow: 0 2px 3px -2px rgba(0, 0, 0, 0.8),
+      0 22px 48px -20px rgba(0, 0, 0, 0.6);
+    --ticket-inset: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    --ticket-backdrop: rgba(2, 6, 15, 0.72);
+  }
+}
+
+.receipt {
+  border-bottom-color: transparent;
+  border-radius: 14px 14px 5px 5px;
+  padding-bottom: 8px;
+  box-shadow: var(--ticket-inset), var(--ticket-shadow);
+}
+
+/* Refine the existing margin rule instead of adding a second perforation. */
+.receipt::before {
+  top: 24px;
+  bottom: 24px;
+  width: 3px;
+  border: 0;
+  background: radial-gradient(circle, var(--line-strong) 1px, transparent 1.4px)
+    center top / 3px 8px repeat-y;
+}
+
+/* Small cut-outs imply a tear edge; this layer never covers an interactive item. */
+.receipt::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  height: 8px;
+  z-index: 3;
+  background: radial-gradient(circle at 50% 100%, var(--bg-page) 3.5px,
+      transparent 4.2px) 0 0 / 12px 8px repeat-x;
+  pointer-events: none;
+}
+
+.receipt-header {
+  flex-wrap: wrap;
+  gap: 24px 18px;
+  border-bottom-style: dashed;
+}
+
+.receipt-header > div:first-child {
+  flex: 1 1 230px;
+  min-width: 0;
+}
+
+.receipt-kicker {
+  color: var(--accent);
+  letter-spacing: 0.16em;
+}
+
+.receipt-header h2 {
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-footer {
+  padding-bottom: 30px;
+}
+
+/* 02 / Reference strip and truthful state stamp --------------------------- */
+.receipt-identity {
+  display: grid;
+  flex: 1 0 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px 24px;
+  width: 100%;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.receipt-reference {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.barcode {
+  display: block;
+  flex: 0 0 92px;
+  width: 92px;
+  height: 25px;
+  opacity: 0.65;
+  background: repeating-linear-gradient(90deg,
+      var(--ink) 0 1px, transparent 1px 3px,
+      var(--ink) 3px 5px, transparent 5px 6px,
+      var(--ink) 6px 7px, transparent 7px 10px,
+      var(--ink) 10px 13px, transparent 13px 15px,
+      var(--ink) 15px 16px, transparent 16px 19px);
+}
+
+.receipt-reference-text {
+  min-width: 0;
+}
+
+.receipt-serial {
+  display: block;
+  color: var(--ink-secondary);
+  font: 600 10px/1.6 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.07em;
+  overflow-wrap: anywhere;
+}
+
+.receipt-time {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font: 10px/1.6 var(--mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.receipt-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  justify-self: end;
+  max-width: 100%;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 8px 13px 7px;
+  background: var(--paper);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px currentColor;
+  text-align: center;
+  transform: rotate(-3deg);
+}
+
+.receipt-stamp .stamp-title {
+  display: block;
+  font: 700 12px/1.5 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.receipt-stamp .stamp-caption {
+  display: block;
+  font: 500 9px/1.5 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.receipt-stamp[data-state="error"] {
+  color: var(--error);
+}
+
+.receipt-stamp[data-state="review"] {
+  color: var(--warning);
+}
+
+.receipt-stamp[data-state="clear"] {
+  color: var(--teal);
+}
+
+/* 03 / Ledger data: quiet bento cells and a double accounting rule ---------- */
+.stats-strip {
+  gap: 10px;
+}
+
+.stats-strip > div {
+  border-color: var(--line);
+  border-radius: 9px;
+  padding: 16px 15px;
+  background: var(--paper);
+  box-shadow: var(--ticket-inset);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.stats-strip > div:first-child,
+.stats-strip > div:last-child {
+  background: var(--paper-subtle);
+}
+
+.stats-strip > div:hover {
+  transform: none;
+  box-shadow: var(--ticket-inset);
+}
+
+.stats-strip dt {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.stats-strip dd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.stats-strip dd::after {
+  content: "";
+  display: block;
+  grid-row: 2;
+  width: min(100%, 9ch);
+  height: 4px;
+  margin-top: 5px;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  pointer-events: none;
+}
+
+.stats-strip > div:first-child dd {
+  color: var(--accent);
+}
+
+.stats-strip dd small {
+  grid-row: 3;
+  margin-top: 7px;
+  font-size: 10.5px;
+  white-space: normal;
+}
+
+.file-table td:nth-child(n + 3),
+.growth-item span:last-child {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.receipt-summary {
+  border-left-width: 1px;
+}
+
+/* 04 / Findings: a light wash, with severity also written in plain text ----- */
+.finding {
+  --finding-tone: var(--error);
+  --finding-wash: var(--error-soft);
+  --finding-border: var(--error-border);
+  border-color: var(--line);
+  border-left-color: var(--finding-border);
+  background: linear-gradient(100deg, var(--finding-wash), var(--paper) 72%);
+  box-shadow: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.finding.warning {
+  --finding-tone: var(--warning);
+  --finding-wash: var(--warning-soft);
+  --finding-border: var(--warning-border);
+}
+
+.finding.info {
+  --finding-tone: var(--accent);
+  --finding-wash: var(--accent-soft);
+  --finding-border: var(--line-strong);
+}
+
+.finding:hover {
+  border-color: var(--finding-border);
+  box-shadow: 0 2px 5px -3px var(--finding-tone);
+}
+
+.finding-title {
+  line-height: 1.6;
+}
+
+.finding-detail {
+  color: var(--ink-secondary);
+}
+
+.finding .severity-word {
+  border-color: transparent;
+  padding-right: 0;
+  background: transparent;
+  color: var(--finding-tone);
+}
+
+/* 05 / Upload hardware: inset ports instead of a decorative glow ----------- */
+.input-panel {
+  box-shadow: var(--ticket-inset), var(--shadow-sm);
+}
+
+.drop-zone {
+  border-color: var(--line-strong);
+  background: linear-gradient(180deg, var(--paper), var(--paper-subtle));
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.045);
+}
+
+.drop-zone::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 7px;
+  left: 0;
+  width: 25px;
+  height: 2px;
+  margin: auto;
+  border-radius: 2px;
+  background: var(--line-strong);
+  pointer-events: none;
+}
+
+.drop-zone svg {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--paper);
+  box-shadow: var(--ticket-inset), var(--shadow-sm);
+}
+
+.drop-zone.secondary svg {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.drop-zone:hover {
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.045), var(--shadow-sm);
+}
+
+.drop-zone.drag-over {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+/* Keep local-processing status steady; it is a fact, not a safety signal. */
+.pulse-dot {
+  animation: none;
+  box-shadow: none;
+}
+
+/* 06 / Treemap precision and a pointer-transparent inspection label -------- */
+.treemap-container {
+  padding: 3px;
+}
+
+.treemap-container rect {
+  rx: 4px;
+  ry: 4px;
+  transition: opacity 140ms ease, filter 140ms ease;
+}
+
+.treemap-container [role="button"]:hover rect,
+.treemap-container [role="button"]:focus-visible rect {
+  opacity: 1;
+  filter: brightness(1.06);
+  stroke: var(--accent);
+}
+
+.map-tooltip {
+  position: fixed;
+  z-index: 1200;
+  max-width: min(320px, calc(100vw - 24px));
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow-lg);
+  font: 11px/1.7 var(--mono);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.map-tooltip strong,
+.map-tooltip span {
+  display: block;
+}
+
+/* 07 / Inspector: a paper-like top layer, with a softened backdrop ---------- */
+dialog {
+  border-color: var(--line-strong);
+  border-radius: 16px;
+  box-shadow: var(--ticket-inset), 0 24px 90px -18px rgba(0, 0, 0, 0.36);
+}
+
+dialog::backdrop {
+  background: var(--ticket-backdrop);
+  backdrop-filter: blur(7px) saturate(0.85);
+}
+
+.dialog-heading {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.dialog-heading .eyebrow {
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.diff-scroll,
+.file-preview-columns pre {
+  scrollbar-gutter: stable;
+}
+
+/* 08 / Isolated preview notice; never part of a package's analysis ---------- */
+.visual-preview-note {
+  margin: 0 0 24px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 11px 14px;
+  background: var(--paper);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.visual-preview-note strong {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.visual-preview-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 09 / Progressive tint mixing, without making it a rendering requirement -- */
+@supports (background: color-mix(in srgb, white, black)) {
+  .stats-strip > div:first-child {
+    background: color-mix(in srgb, var(--accent) 4%, var(--paper));
+  }
+
+  .finding {
+    background: linear-gradient(100deg,
+        color-mix(in srgb, var(--finding-tone) 6%, var(--paper)), var(--paper) 80%);
+  }
+
+  .drop-zone:hover {
+    background: color-mix(in srgb, var(--accent) 4%, var(--paper));
+  }
+}
+
+/* 10 / Smaller paper, long package names, keyboard and motion preferences --- */
+@media (max-width: 1050px) {
+  .receipt-header {
+    flex-direction: row;
+  }
+
+  .receipt-header > div:first-child {
+    flex-basis: 100%;
+  }
+
+  .receipt-identity {
+    gap: 14px;
+  }
+
+  .barcode {
+    flex-basis: 64px;
+    width: 64px;
+  }
+}
+
+@media (max-width: 760px) {
+  .receipt-header {
+    gap: 18px;
+  }
+
+  .receipt-identity {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-top: 17px;
+  }
+
+  .receipt-reference {
+    gap: 9px;
+  }
+
+  .receipt-stamp {
+    padding: 7px 10px 6px;
+    transform: rotate(-2deg);
+  }
+
+  .receipt-stamp .stamp-title {
+    font-size: 10.5px;
+  }
+
+  .receipt-stamp .stamp-caption {
+    font-size: 8px;
+  }
+
+  .stats-strip {
+    gap: 10px;
+  }
+
+  .stats-strip > div {
+    padding: 13px;
+  }
+
+  .finding {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .finding:first-child {
+    padding-top: 14px;
+  }
+
+  .finding-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+    line-height: 22px;
+  }
+
+  .finding-title {
+    flex-wrap: wrap;
+    gap: 3px 10px;
+  }
+
+  .visual-preview-note {
+    margin-bottom: 18px;
+  }
+
+  dialog {
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .receipt-identity {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .receipt-stamp {
+    justify-self: start;
+    margin: 3px 0 2px 2px;
+  }
+}
+
+/* One theme control is enough on a narrow header. Keep its two facts legible. */
+@media (max-width: 620px) {
+  .site-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 0;
+    padding: 14px 16px;
+  }
+
+  .brand {
+    gap: 10px;
+    min-width: 0;
+    font-size: 17px;
+    white-space: nowrap;
+  }
+
+  .brand-badge {
+    flex-shrink: 0;
+  }
+
+  .brand small {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .header-right {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: end;
+    gap: 7px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .header-right .theme-toggle-btn {
+    display: none;
+  }
+
+  .header-right .local-note {
+    max-width: 100%;
+    padding: 4px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .site-header {
+    gap: 8px;
+    padding: 12px 10px;
+  }
+
+  .brand {
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .brand-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .brand-badge svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .brand small,
+  .header-right .theme-control {
+    font-size: 9px;
+  }
+
+  .header-right .theme-control select {
+    min-height: 28px;
+    padding: 3px 5px;
+    font-size: 10px;
+  }
+
+  .header-right .local-note {
+    gap: 5px;
+    padding: 4px 5px;
+    font-size: 9px;
+  }
+
+  .header-right .pulse-dot {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt,
+  .stats-strip > div,
+  .finding,
+  .drop-zone,
+  .drop-zone svg,
+  .treemap-container rect,
+  dialog,
+  dialog::backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .drop-zone:hover,
+  .drop-zone.drag-over,
+  .drop-zone:hover svg {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .receipt-stamp {
+    box-shadow: none;
+  }
+
+  .barcode,
+  .receipt::after {
+    display: none;
+  }
+
+  .stats-strip dd::after {
+    border-color: CanvasText;
+  }
+}
+/* Keep compact line-number headings on one line in code comparisons. */
+.diff-table th {
+  white-space: nowrap;
+}

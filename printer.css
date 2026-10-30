@@ -1,0 +1,517 @@
+/* ==========================================================================
+   Thermal receipt printer
+   Load after receipt-skin.css. States belong to the wrapper's data-state;
+   application code owns disabled/inert/hidden and the actual report content.
+   ========================================================================== */
+
+/* 01 / Material palette --------------------------------------------------- */
+:root {
+  --thermal-paper: #fffdf9;
+  --thermal-paper-raised: #fffefc;
+  --thermal-paper-subtle: #f6f3ed;
+  --printer-body: #e9ecf0;
+  --printer-top: #f3f5f7;
+  --printer-edge: #d1d7e0;
+  --printer-ink: #334155;
+  --printer-muted: #64748b;
+  --printer-mouth: #252a34;
+  --printer-rim-light: rgba(255, 255, 255, 0.88);
+  --printer-rim-shadow: rgba(15, 23, 42, 0.13);
+}
+
+:root[data-theme="dark"] {
+  --thermal-paper: #121923;
+  --thermal-paper-raised: #18212f;
+  --thermal-paper-subtle: #18202a;
+  --printer-body: #252d3a;
+  --printer-top: #303949;
+  --printer-edge: #3d485a;
+  --printer-ink: #d9e2f0;
+  --printer-muted: #a6b4c8;
+  --printer-mouth: #05070c;
+  --printer-rim-light: rgba(255, 255, 255, 0.06);
+  --printer-rim-shadow: rgba(0, 0, 0, 0.42);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --thermal-paper: #121923;
+    --thermal-paper-raised: #18212f;
+    --thermal-paper-subtle: #18202a;
+    --printer-body: #252d3a;
+    --printer-top: #303949;
+    --printer-edge: #3d485a;
+    --printer-ink: #d9e2f0;
+    --printer-muted: #a6b4c8;
+    --printer-mouth: #05070c;
+    --printer-rim-light: rgba(255, 255, 255, 0.06);
+    --printer-rim-shadow: rgba(0, 0, 0, 0.42);
+  }
+}
+
+/* 02 / Housing and the inset paper mouth ---------------------------------- */
+.receipt-printer {
+  --paper-feed-duration: 900ms;
+  --stamp-duration: 450ms;
+  --paper-tear-duration: 360ms;
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.printer-head {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--printer-edge);
+  border-radius: 17px 17px 10px 10px;
+  padding: 19px 22px 15px;
+  background: linear-gradient(180deg, var(--printer-top), var(--printer-body));
+  color: var(--printer-ink);
+  box-shadow: inset 0 1px 0 var(--printer-rim-light),
+    inset 0 -2px 0 var(--printer-rim-shadow), 0 4px 8px -6px rgba(15, 23, 42, 0.3);
+}
+
+.printer-head > * {
+  min-width: 0;
+}
+
+.printer-head-top {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.printer-indicator {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.printer-model {
+  font: 650 10px/1.5 var(--mono);
+  letter-spacing: 0.13em;
+  overflow-wrap: anywhere;
+}
+
+.printer-state-label {
+  color: var(--printer-muted);
+  font: 500 11px/1.5 var(--body);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.printer-led {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 50%;
+  background: var(--subtle);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.printer-mouth {
+  position: relative;
+  grid-column: 1 / -1;
+  height: 11px;
+  margin: 8px -12px 0;
+  border: 1px solid var(--printer-edge);
+  border-radius: 6px;
+  background: var(--printer-mouth);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.66),
+    0 1px 0 var(--printer-rim-light);
+}
+
+.printer-mouth::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 1px;
+  background: var(--thermal-paper);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Labels accompany every LED state; the color is never the only indication. */
+.receipt-printer[data-state="analyzing"] .printer-led,
+.receipt-printer[data-state="feeding"] .printer-led,
+.receipt-printer[data-state="stamping"] .printer-led {
+  background: var(--warning);
+  animation: printer-working 600ms ease-in-out infinite alternate;
+}
+
+.receipt-printer[data-state="idle"] .printer-led,
+.receipt-printer[data-state="ready"] .printer-led {
+  background: var(--teal);
+  animation: printer-ready 2400ms ease-in-out infinite;
+}
+
+.receipt-printer[data-state="detached"] .printer-led {
+  background: var(--teal);
+}
+
+.receipt-printer[data-state="error"] .printer-led {
+  background: var(--error);
+}
+
+/* 03 / Paper, tear bar and processing placeholder ------------------------- */
+.receipt-printer .receipt {
+  --paper: var(--thermal-paper);
+  --paper-elevated: var(--thermal-paper-raised);
+  --paper-subtle: var(--thermal-paper-subtle);
+  --map-stroke: var(--thermal-paper);
+  width: calc(100% - 24px);
+  min-width: 0;
+  margin: 0 12px;
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  background: var(--thermal-paper);
+  transform-origin: 50% 0;
+}
+
+.receipt-printer .receipt-header {
+  position: relative;
+}
+
+.tear-control {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: calc(100% - 24px);
+  min-width: 0;
+  min-height: 34px;
+  margin: -1px 12px 0;
+  border: 0;
+  padding: 6px 18px;
+  background: var(--thermal-paper);
+  color: var(--muted);
+  font: 500 10px/1.6 var(--body);
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.tear-control::before {
+  content: "";
+  position: absolute;
+  right: 12px;
+  left: 12px;
+  top: 50%;
+  border-top: 1px dashed var(--line-strong);
+  pointer-events: none;
+}
+
+.tear-control > * {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  padding: 0 4px;
+  background: var(--thermal-paper);
+}
+
+.tear-control .tear-line {
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.tear-control .tear-icon {
+  font-size: 13px;
+}
+
+.tear-control .tear-label {
+  overflow-wrap: anywhere;
+}
+
+.receipt-printer[data-state="ready"] .tear-control:not(:disabled):hover {
+  color: var(--accent);
+}
+
+.tear-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.printer-processing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 140px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  margin: 0 12px;
+  border-radius: 0 0 8px 8px;
+  padding: 24px;
+  background: var(--thermal-paper);
+  color: var(--muted);
+  font: 12px/1.8 var(--body);
+  text-align: center;
+}
+
+/* 04 / Feed, stamp, tear: transform/clip only, with no per-frame layout work -- */
+.receipt-printer[data-state="feeding"] .receipt {
+  animation: paper-feed var(--paper-feed-duration) cubic-bezier(0.2, 0.65, 0.25, 1) both;
+}
+
+.receipt-printer .receipt-stamp {
+  transform: rotate(-8deg);
+  transform-origin: 50% 50%;
+}
+
+.receipt-printer[data-state="idle"] .receipt-stamp,
+.receipt-printer[data-state="analyzing"] .receipt-stamp,
+.receipt-printer[data-state="feeding"] .receipt-stamp,
+.receipt-printer[data-state="error"] .receipt-stamp {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.receipt-printer[data-state="stamping"] .receipt-stamp {
+  animation: stamp-slam var(--stamp-duration) cubic-bezier(0.16, 0.8, 0.25, 1) both;
+}
+
+.receipt-printer[data-state="ready"] .receipt-stamp,
+.receipt-printer[data-state="tearing"] .receipt-stamp,
+.receipt-printer[data-state="detached"] .receipt-stamp {
+  visibility: visible;
+  opacity: 1;
+}
+
+.receipt-printer[data-state="tearing"] {
+  /* A long sheet's brief rotation must not create a horizontal page scrollbar. */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.receipt-printer[data-state="tearing"] .receipt {
+  animation: paper-tear var(--paper-tear-duration) ease-in-out both;
+}
+
+.receipt-printer[data-state="detached"] .receipt {
+  transform: translateY(16px);
+  box-shadow: var(--ticket-inset), 0 3px 4px -2px rgba(15, 23, 42, 0.14),
+    0 24px 44px -20px var(--printer-rim-shadow);
+}
+
+/* Tear notches sit above the header, clear of its title and export actions. */
+.receipt-printer[data-state="tearing"] .receipt-header::before,
+.receipt-printer[data-state="detached"] .receipt-header::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  left: -1px;
+  z-index: 2;
+  height: 7px;
+  background: linear-gradient(135deg, var(--bg-page) 25%, transparent 25%)
+      -6px 0 / 12px 12px repeat-x,
+    linear-gradient(225deg, var(--bg-page) 25%, transparent 25%)
+      -6px 0 / 12px 12px repeat-x;
+  pointer-events: none;
+}
+
+.receipt-printer[data-state="detached"] .tear-control {
+  background: transparent;
+}
+
+.receipt-printer[data-state="detached"] .tear-control > * {
+  background: var(--bg-page);
+}
+
+/* 05 / Actions keep the same report reachable after a tear ----------------- */
+.printer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  min-width: 0;
+  margin: 14px 12px 0;
+}
+
+.receipt-printer[data-state="detached"] .printer-actions {
+  margin-top: 32px;
+}
+
+.printer-actions #print-again {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 6px 11px;
+  background: var(--paper);
+  color: var(--ink-secondary);
+  font: 600 11px/1.5 var(--body);
+}
+
+.printer-actions #print-again:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#printer-message {
+  flex: 1 1 180px;
+  min-width: 0;
+  color: var(--muted);
+  font: 11px/1.7 var(--body);
+  overflow-wrap: anywhere;
+}
+
+/* 06 / Animation recipes and accessibility -------------------------------- */
+@keyframes paper-feed {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-28px);
+    opacity: 0.75;
+  }
+  100% {
+    clip-path: inset(0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes stamp-slam {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(3) rotate(-20deg);
+  }
+  42% {
+    opacity: 1;
+    transform: translateY(1px) scale(0.92) rotate(-8deg);
+  }
+  62% {
+    transform: translateY(0) scale(1.04) rotate(-6deg);
+  }
+  82% {
+    transform: scale(0.985) rotate(-8.5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+
+@keyframes paper-tear {
+  0% { transform: translateY(0) rotate(0); }
+  35% { transform: translateY(3px) rotate(-0.3deg); }
+  100% { transform: translateY(16px) rotate(1deg); }
+}
+
+@keyframes printer-working {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+@keyframes printer-ready {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 3px var(--teal-soft); }
+}
+
+/* Smaller paper margins leave enough reading space at 390 px and 320 px. */
+@media (max-width: 760px) {
+  .printer-head {
+    gap: 8px;
+    padding: 15px 15px 12px;
+    border-radius: 14px 14px 8px 8px;
+  }
+
+  .printer-model {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  .printer-state-label {
+    max-width: 12em;
+    font-size: 10px;
+  }
+
+  .printer-mouth {
+    height: 9px;
+    margin: 6px -11px 0;
+  }
+
+  .receipt-printer .receipt,
+  .tear-control {
+    width: calc(100% - 12px);
+    margin-right: 6px;
+    margin-left: 6px;
+  }
+
+  .tear-control {
+    min-height: 32px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: 9px;
+  }
+
+  .printer-actions {
+    margin-right: 6px;
+    margin-left: 6px;
+  }
+
+  .printer-processing {
+    margin-right: 6px;
+    margin-left: 6px;
+    padding: 20px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-printer {
+    --paper-feed-duration: 0ms;
+    --stamp-duration: 0ms;
+    --paper-tear-duration: 0ms;
+  }
+
+  .receipt-printer *,
+  .receipt-printer *::before,
+  .receipt-printer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .receipt-printer[data-state="feeding"] .receipt,
+  .receipt-printer[data-state="tearing"] .receipt {
+    clip-path: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .receipt-printer[data-state="detached"] .receipt {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .printer-head,
+  .printer-mouth,
+  .receipt-printer[data-state="detached"] .receipt {
+    box-shadow: none;
+  }
+
+  .printer-led {
+    border: 1px solid CanvasText;
+    background: CanvasText;
+  }
+
+  .printer-mouth {
+    background: CanvasText;
+  }
+}

@@ -1,0 +1,9 @@
+.qa/
+design-preview/
+node_modules/
+*.log
+*.tgz
+*.tar
+*.zip
+.DS_Store
+Thumbs.db
