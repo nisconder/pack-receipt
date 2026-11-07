@@ -17,6 +17,11 @@ keep exactly the same file size. Everything runs locally in your browser.
 
 ## Open it
 
+**[Open Pack Receipt online](https://nisconder.github.io/pack-receipt/)** — no
+installation required. Package archives are still processed only in your browser.
+
+To use it offline:
+
 1. Download the repository ZIP and extract it, or clone it:
 
    ```sh
@@ -134,6 +139,14 @@ inspection, comparison, receipt exports and reduced-motion behavior.
 
 See [FRONTEND-MODULES.md](FRONTEND-MODULES.md) for module contracts and
 implementation notes.
+
+## GitHub Pages
+
+The site is deployed to <https://nisconder.github.io/pack-receipt/> by
+`.github/workflows/pages.yml`. Every push to `main` runs the tests, packages the
+static runtime files and publishes them to GitHub Pages. The workflow can also
+be run manually from the Actions tab. Repository **Settings → Pages → Source**
+must be set to **GitHub Actions**.
 
 ## License
 
