@@ -153,3 +153,69 @@ test("generated Markdown cannot leak an unterminated private key in script metad
   assert.doesNotMatch(JSON.stringify(report), /partial-private-material/);
   assert.match(report.scripts.added[0].after, /私钥内容已省略/);
 });
+
+test("script credentials are redacted before long metadata is truncated", () => {
+  const credential = "x".repeat(3950) + " FAKE_PRIVATE_TAIL " + "z".repeat(100);
+  const report = analyzer.analyze(archive({ scripts: {
+    install: 'node setup.js --token="' + credential + '" --verbose',
+    postinstall: "node setup.js --password '" + credential + "' --verbose",
+    prepare: "curl https://demo:" + "p".repeat(4100) + "@example.invalid/",
+  } }));
+  assert.doesNotMatch(JSON.stringify(report), /FAKE_PRIVATE_TAIL|x{20}|p{20}|z{20}/);
+  assert.equal(report.scripts.added.find((item) => item.name === "install").after, "node setup.js --token=[已省略] --verbose");
+  assert.equal(report.scripts.added.find((item) => item.name === "postinstall").after, "node setup.js --password [已省略] --verbose");
+  assert.equal(report.scripts.added.find((item) => item.name === "prepare").after, "curl https://[已省略]@example.invalid/");
+});
+
+test("quoted script credentials include escaped quotes and unterminated values", () => {
+  const commands = [
+    'node setup.js --token="fake\\" FAKE_PRIVATE_TAIL" --verbose',
+    "node setup.js --password 'fake\\' FAKE_PRIVATE_TAIL' --verbose",
+    'node setup.js API_KEY="fake FAKE_PRIVATE_TAIL',
+    'node setup.js --secret "fake FAKE_PRIVATE_TAIL\\',
+  ];
+  for (const command of commands) {
+    const report = analyzer.analyze(archive({ scripts: { install: command } }));
+    assert.doesNotMatch(JSON.stringify(report), /fake|FAKE_PRIVATE_TAIL/);
+    assert.match(report.scripts.added[0].after, /已省略/);
+  }
+});
+
+test("control characters are normalized before script credential matching", () => {
+  for (const separator of ["\u0000", "\u001b", "\u0085"]) {
+    const report = analyzer.analyze(archive({ scripts: { install: "node app.js --token" + separator + "FAKE_PRIVATE_VALUE --verbose" } }));
+    assert.doesNotMatch(JSON.stringify(report), /FAKE_PRIVATE_VALUE/);
+    assert.equal(report.scripts.added[0].after, "node app.js --token [已省略] --verbose");
+  }
+});
+
+test("full credential-name boundaries retain common assignments and long identifiers", () => {
+  for (const argument of [
+    "--token FAKE_PRIVATE_VALUE", "API_KEY=FAKE_PRIVATE_VALUE",
+    "npm_config_registry_token=FAKE_PRIVATE_VALUE", "--client.secret=FAKE_PRIVATE_VALUE",
+    "--client-secret FAKE_PRIVATE_VALUE", ".npm._auth=FAKE_PRIVATE_VALUE",
+    "https://demo:FAKE_PRIVATE_VALUE@example.invalid/",
+    "x.".repeat(1000) + "API_KEY=FAKE_PRIVATE_VALUE",
+  ]) {
+    const report = analyzer.analyze(archive({ scripts: { install: "node app.js " + argument + " --verbose" } }));
+    assert.doesNotMatch(JSON.stringify(report), /FAKE_PRIVATE_VALUE/);
+    assert.match(report.scripts.added[0].after, /已省略/);
+    assert.match(report.scripts.added[0].after, /--verbose$/);
+  }
+  for (const text of ["x.".repeat(32768), "x-".repeat(32768), "token.".repeat(10923), "--" + "token.".repeat(10923)]) {
+    const report = analyzer.analyze(archive({ scripts: { install: text } }));
+    assert.equal(report.scripts.added[0].after, text.slice(0, 4000));
+  }
+});
+
+test("ordinary arguments do not consume later or nested credential options", () => {
+  for (const command of [
+    "node app.js --ordinary --token FAKE_PRIVATE_VALUE",
+    'WRAPPER="API_KEY=FAKE_PRIVATE_VALUE" node app.js',
+    "node app.js --ordinary=value --password=FAKE_PRIVATE_VALUE",
+  ]) {
+    const report = analyzer.analyze(archive({ scripts: { install: command } }));
+    assert.doesNotMatch(JSON.stringify(report), /FAKE_PRIVATE_VALUE/);
+    assert.match(report.scripts.added[0].after, /已省略/);
+  }
+});

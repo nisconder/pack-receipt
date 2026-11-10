@@ -230,10 +230,17 @@
   function normalizePath(value) { return String(value).replace(/\\/g, "/").replace(/^(?:\.\/)+/, "").replace(/\/$/, ""); }
   function clean(value) { return String(value || "").replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").slice(0, 4000).trim(); }
   function redact(value) {
-    return clean(String(value).replace(/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----[\s\S]*?(?:-----END (?:[A-Z]+ )?PRIVATE KEY-----|$)/g, "[私钥内容已省略]"))
+    // Redact complete values before the display limit can cut off their closing
+    // quote or URL delimiter and leave a credential fragment in the receipt.
+    // Match names only at a full identifier boundary, so dotted or hyphenated
+    // names do not retry the same long suffix at every punctuation character.
+    // Keep keyword detection in a separate lookahead: matching the identifier
+    // must not retry every keyword occurrence when a value delimiter is absent.
+    return clean(String(value).replace(/-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----[\s\S]*?(?:-----END (?:[A-Z]+ )?PRIVATE KEY-----|$)/g, "[私钥内容已省略]")
+      .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
       .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[已省略]@")
-      .replace(/((?:--?|\b)[\w.-]*(?:password|passwd|token|secret|api[-_]?key|_auth)[\w.-]*\s*(?:=|:)\s*)(?:"[^"]*"|'[^']*'|[^\s;&]+)/gi, "$1[已省略]")
-      .replace(/(--?[\w.-]*(?:password|passwd|token|secret|api[-_]?key)[\w.-]*\s+)(?:"[^"]*"|'[^']*'|\S+)/gi, "$1[已省略]");
+      .replace(/(?<![\w.-])((?=[\w.-]*(?:password|passwd|token|secret|api[-_]?key|_auth))[\w.-]+\s*(?:=|:)\s*)(?:"(?:\\[\s\S]?|[^"\\])*(?:"|$)|'(?:\\[\s\S]?|[^'\\])*(?:'|$)|[^\s;&]+)/gi, "$1[已省略]")
+      .replace(/(?<![\w.-])(--?(?=[\w.-]*(?:password|passwd|token|secret|api[-_]?key))[\w.-]+\s+)(?:"(?:\\[\s\S]?|[^"\\])*(?:"|$)|'(?:\\[\s\S]?|[^'\\])*(?:'|$)|\S+)/gi, "$1[已省略]"));
   }
   function configKeys(text) {
     var keys = [];
