@@ -6,6 +6,8 @@ Drop in a `.tgz` to inspect packaged files, missing entry points and unexpected
 content. Add the previous release to see what changed, including edits that
 keep exactly the same file size. Everything runs locally in your browser.
 
+Current version: **0.3.1** · [Changelog](CHANGELOG.md).
+
 ![Pack Receipt showing the built-in package comparison and release findings](docs/screenshots/light.png)
 
 <details>

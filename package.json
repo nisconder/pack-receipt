@@ -1,6 +1,6 @@
 {
   "name": "pack-receipt",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A browser-local receipt for the npm package you are about to publish.",
   "license": "MIT",
